@@ -8,6 +8,23 @@ interface CreateAdViewProps {
 
 export function CreateAdView({ setView }: CreateAdViewProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const filesInfo = Array.from(e.target.files).map(file => {
+        return new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target?.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      });
+      Promise.all(filesInfo).then(base64Images => {
+        setSelectedImages(prev => [...prev, ...base64Images]);
+      });
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -20,7 +37,7 @@ export function CreateAdView({ setView }: CreateAdViewProps) {
         category: formData.get('category'),
         price: formData.get('price'),
         description: formData.get('description'),
-        images: ["https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&auto=format&fit=crop&q=60"], // Mock image
+        images: selectedImages.length > 0 ? selectedImages : ["https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&auto=format&fit=crop&q=60"], // Fallback if no images
         location: `${formData.get('cep')} - ${formData.get('cidade')}`,
       };
 
@@ -103,11 +120,30 @@ export function CreateAdView({ setView }: CreateAdViewProps) {
                 {/* Upload Zone */}
                 <div className="col-span-1 md:col-span-2 space-y-2">
                   <label className="font-title-lg text-[18px] md:text-title-lg block text-on-surface">Fotos do Produto</label>
-                  <div className="border-2 border-dashed border-primary/30 bg-surface-container-low rounded-xl p-8 md:p-12 text-center cursor-pointer hover:bg-surface-container-high transition-all group">
+
+                  {selectedImages.length > 0 && (
+                    <div className="flex gap-4 mb-4 overflow-x-auto pb-2">
+                      {selectedImages.map((src, i) => (
+                        <div key={i} className="relative min-w-[96px] h-24 rounded-lg overflow-hidden border border-outline-variant shrink-0">
+                          <img src={src} alt="Upload preview" className="w-full h-full object-cover" />
+                          <button 
+                            type="button" 
+                            onClick={() => setSelectedImages(prev => prev.filter((_, idx) => idx !== i))} 
+                            className="absolute top-1 right-1 bg-black/50 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-black/70 transition-colors"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <label className="block border-2 border-dashed border-primary/30 bg-surface-container-low rounded-xl p-8 md:p-12 text-center cursor-pointer hover:bg-surface-container-high transition-all group">
+                    <input type="file" multiple accept="image/*" className="hidden" onChange={handleImageUpload} />
                     <CloudUpload className="mx-auto text-primary mb-4 w-12 h-12 md:w-16 md:h-16 group-hover:scale-110 transition-transform" />
                     <p className="font-headline-md text-[20px] md:text-headline-md text-on-surface mb-1">Arraste ou clique para enviar</p>
-                    <p className="text-on-surface-variant font-label-md text-label-md">PNG, JPG até 10MB (Mínimo 3 fotos)</p>
-                  </div>
+                    <p className="text-on-surface-variant font-label-md text-label-md">PNG, JPG até 10MB</p>
+                  </label>
                 </div>
 
                 {/* Location */}
