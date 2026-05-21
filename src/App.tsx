@@ -24,14 +24,18 @@ export default function App() {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsLoggedIn(!!session);
-      if (!session && view !== 'explore' && view !== 'product') {
-        // If user signs out and is on a protected route, go to explore
-        setView('explore');
+      if (!session) {
+        setView((prevView) => {
+          if (prevView !== 'explore' && prevView !== 'product' && prevView !== 'login') {
+            return 'explore';
+          }
+          return prevView;
+        });
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [view]);
+  }, []);
 
   const handleProtectedAction = (targetView: ViewType) => {
     if (!isLoggedIn) {
