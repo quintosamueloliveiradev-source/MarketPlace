@@ -32,17 +32,15 @@ export function CreateAdView({ setView }: CreateAdViewProps) {
       
       const result = await resp.json();
       if (result.error) {
-        // Fallback simulate success so UI test works seamlessly
-        console.warn("DB not connected, simulating post", result);
-        alert('Modo Preview: Banco não conectado. Anúncio "publicado" com sucesso!');
+        alert('Erro ao publicar anúncio: ' + result.error);
+        return;
       } else {
         alert('Anúncio publicado com sucesso no banco!');
       }
       setView('dashboard');
     } catch (err) {
       console.error(err);
-      alert('Modo Preview: Anúncio publicado localmente com sucesso!');
-      setView('dashboard');
+      alert('Ocorreu um erro de conexão.');
     } finally {
       setIsSubmitting(false);
     }

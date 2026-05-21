@@ -1,1 +1,1 @@
-export type ViewType = 'explore' | 'product' | 'dashboard' | 'chat' | 'create';
+export type ViewType = 'explore' | 'product' | 'dashboard' | 'chat' | 'create' | 'login';

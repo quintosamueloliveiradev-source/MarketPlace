@@ -8,9 +8,26 @@ const { Pool } = pkg;
 let pool: PgPool | null = null;
 function getPool() {
   if (!pool) {
-    const dbUrl = process.env.DATABASE_URL;
+    let dbUrl = process.env.DATABASE_URL;
     if (!dbUrl) {
       console.warn("DATABASE_URL is not set. API calls requiring database will fail.");
+    } else if (dbUrl.includes('#') || dbUrl.includes('[')) {
+      console.warn("\n⚠️ AVISO: Seu DATABASE_URL contém caracteres especiais como '#' ou '['. Tentando auto-corrigir (URL Encode)...");
+      try {
+        // Simple auto-fix for common issues
+        // format is postgres://user:password@host...
+        const urlMatch = dbUrl.match(/^(postgres(?:ql)?:\/\/[^:]+:)(.*)(@[^@]+)$/);
+        if (urlMatch) {
+          const prefix = urlMatch[1];
+          let password = urlMatch[2];
+          const suffix = urlMatch[3];
+          password = password.replace(/\[/g, '%5B').replace(/\]/g, '%5D').replace(/#/g, '%23').replace(/@/g, '%40');
+          dbUrl = prefix + password + suffix;
+          console.log("✅ DATABASE_URL auto-corrigido com sucesso.");
+        }
+      } catch (e) {
+        console.warn("Falha ao tentar auto-corrigir DATABASE_URL.");
+      }
     }
     const isLocal = dbUrl ? typeof dbUrl === 'string' && (dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1')) : true;
     pool = new Pool({
@@ -42,12 +59,26 @@ app.get("/api/health", (req, res) => {
 app.get("/api/ads", async (req, res) => {
   try {
     if (!process.env.DATABASE_URL) {
-      return res.status(500).json({ error: "No Database Configured", message: "Preview mode: Please configure PostgreSQL to fetch real ads." });
+      return res.status(500).json({ error: "No Database Configured", message: "Database URL is not configured." });
     }
     const db = getPool();
     const result = await db.query("SELECT * FROM ads ORDER BY created_at DESC LIMIT 50");
     res.json(result.rows);
   } catch (error: any) {
+    if (error.code === 'ENOTFOUND' || error.message?.includes('ENOTFOUND')) {
+      console.error("Database Connection Error (ENOTFOUND): Hostname not found. This is often caused by an unencoded special character (like '@' or '#') in your database password which breaks URL parsing.");
+      return res.status(503).json({ 
+        error: "Database Host Not Found", 
+        message: "Erro na conexão. Se estiver usando Supabase, verifique se a sua senha tem caracteres especiais (como #, @, [, ]) e substitua-os pelo seu respectivo URL Encode (ex: %23, %40, %5B, %5D)." 
+      });
+    }
+    if (error.code === '28P01' || error.message?.includes('password authentication failed')) {
+      console.error("Database Auth Error: Senha incorreta ou caracteres especiais não codificados (ex: '#'). Substitua '#' por '%23', '[' por '%5B' e ']' por '%5D' no seu DATABASE_URL.");
+      return res.status(503).json({ 
+        error: "Database Authentication Failed", 
+        message: "Erro de autenticação no banco. Verifique se sua senha no DATABASE_URL contém caracteres especiais como '#' e substitua por '%23' (URL Encode)." 
+      });
+    }
     if (error.code === 'ETIMEDOUT' || error.message?.includes('ETIMEDOUT') || error.message?.includes('timeout')) {
       console.warn("Database Connection Timeout. Please switch your Supabase DATABASE_URL to use the Connection Pooler URL (port 6543) instead of direct connection (port 5432).");
       return res.status(503).json({ 
@@ -64,7 +95,7 @@ app.get("/api/ads", async (req, res) => {
 app.post("/api/ads", async (req, res) => {
   try {
     if (!process.env.DATABASE_URL) {
-      return res.status(500).json({ error: "No Database Configured", message: "Preview mode: Please configure PostgreSQL to save ads." });
+      return res.status(500).json({ error: "No Database Configured", message: "Database URL is not configured." });
     }
     const { title, category, price, description, images, location } = req.body;
     const db = getPool();

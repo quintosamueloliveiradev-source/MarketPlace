@@ -20,29 +20,25 @@ export function ExploreView({ setView }: ExploreViewProps) {
       .then(res => res.json())
       .then(data => {
         if (data.error) {
-          console.warn("DB not connected, using fallback data");
-          setDbError("Aviso de Preview: Banco de dados não configurado. Exibindo dados de exemplo.");
-          setAds(listings); // use fallback
-        } else {
-          // If empty, we can still show fallback for UI demonstration
-          if (Array.isArray(data) && data.length === 0) {
-            setAds(listings);
-          } else if (Array.isArray(data)) {
-            setAds(data.map(d => ({
-              id: d.id,
-              title: d.title,
-              price: d.price,
-              location: d.location,
-              time: 'Recentemente',
-              image: (d.images && d.images[0]) || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=60',
-              liked: false
-            })));
-          }
+          console.error("Erro ao carregar anúncios:", data.error);
+          setDbError("Não foi possível carregar os anúncios neste momento.");
+          setAds([]);
+        } else if (Array.isArray(data)) {
+          setAds(data.map(d => ({
+            id: d.id,
+            title: d.title,
+            price: d.price,
+            location: d.location,
+            time: 'Recentemente',
+            image: (d.images && d.images[0]) || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=60',
+            liked: false
+          })));
         }
       })
       .catch((err) => {
-        setDbError("Falha na conexão. Exibindo dados de exemplo.");
-        setAds(listings);
+        console.error("Erro na conexão:", err);
+        setDbError("Falha na conexão ao buscar anúncios.");
+        setAds([]);
       })
       .finally(() => setLoadingAds(false));
   }, []);
@@ -253,6 +249,10 @@ export function ExploreView({ setView }: ExploreViewProps) {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-gutter w-full">
           {loadingAds ? (
             <div className="col-span-full py-12 text-center text-on-surface-variant">Carregando anúncios...</div>
+          ) : ads.length === 0 ? (
+            <div className="col-span-full py-12 text-center text-on-surface-variant border-2 border-dashed border-outline-variant/50 rounded-2xl">
+              Nenhum anúncio encontrado. Seja o primeiro a anunciar!
+            </div>
           ) : ads.map((item, i) => (
             <div 
               key={i} 
