@@ -11,6 +11,10 @@ export function ExploreView({ setView }: ExploreViewProps) {
   const [loadingAds, setLoadingAds] = useState(true);
   const [dbError, setDbError] = useState<string | null>(null);
 
+  const [selectedState, setSelectedState] = useState('BR');
+  const [isStateDropdownOpen, setIsStateDropdownOpen] = useState(false);
+  const states = ['BR', 'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RR', 'SC', 'SP', 'SE', 'TO'];
+
   useEffect(() => {
     fetch('/api/ads')
       .then(res => res.json())
@@ -45,27 +49,78 @@ export function ExploreView({ setView }: ExploreViewProps) {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero & Search Section */}
-      <section className="relative bg-primary-container py-16 md:py-24 px-margin-mobile overflow-hidden flex-shrink-0">
-        <div className="absolute inset-0 opacity-10 pointer-events-none">
+      <section className="relative bg-primary-container py-16 md:py-24 px-margin-mobile flex-shrink-0 z-30">
+        <div className="absolute inset-0 opacity-10 pointer-events-none overflow-hidden">
           <div className="absolute -top-24 -left-24 w-96 h-96 bg-secondary-fixed rounded-full blur-3xl"></div>
           <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-tertiary-fixed-dim rounded-full blur-3xl"></div>
         </div>
-        <div className="max-w-[800px] mx-auto text-center relative z-10 w-full">
+        <div className="max-w-[800px] mx-auto text-center relative z-40 w-full">
           <h1 className="font-headline-lg text-[32px] md:text-display-lg text-white mb-8">
             O que você está procurando hoje?
           </h1>
-          <div className="relative group w-full">
-            <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none">
-              <Search className="text-outline/70 w-6 h-6" />
+          <div className="flex items-center w-full h-16 bg-white rounded-full shadow-2xl focus-within:ring-4 focus-within:ring-white/40 focus-within:outline-none relative z-50 transition-shadow">
+            <div 
+              className="flex items-center h-full pl-5 md:pl-6 pr-4 border-r border-outline-variant/30 cursor-pointer relative rounded-l-full transition-colors group outline-none"
+              onClick={() => setIsStateDropdownOpen(!isStateDropdownOpen)}
+            >
+              <MapPin className="text-outline/70 w-5 h-5 mr-2 flex-shrink-0 group-hover:text-primary transition-colors" />
+              <div className="font-medium text-gray-900 border-none outline-none focus:ring-0 cursor-pointer pr-4 md:pr-5 group-hover:text-primary transition-colors h-full flex items-center justify-center w-8 md:w-10 text-base md:text-lg select-none">
+                {selectedState}
+              </div>
+              <div className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                <svg width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-gray-500 w-2.5 h-2.5 md:w-3 md:h-3 group-hover:text-primary transition-transform ${isStateDropdownOpen ? 'rotate-180' : ''}`}>
+                  <path d="M1 1L5 5L9 1" />
+                </svg>
+              </div>
+
+              {/* Invisible overlay to close dropdown on outside click */}
+              {isStateDropdownOpen && (
+                <div 
+                  className="fixed inset-0 z-40" 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsStateDropdownOpen(false);
+                  }} 
+                />
+              )}
+
+              {/* Dropdown Menu - Forces downward direction and centers text */}
+              {isStateDropdownOpen && (
+                <div className="absolute top-[calc(100%+8px)] left-2 bg-white rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-outline-variant/20 py-2 w-[88px] z-50 max-h-60 overflow-y-auto overflow-x-hidden">
+                  {states.map(state => (
+                    <div 
+                      key={state}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedState(state);
+                        setIsStateDropdownOpen(false);
+                      }}
+                      className={`py-2.5 hover:bg-primary/5 cursor-pointer text-base md:text-lg flex justify-center items-center transition-colors ${selectedState === state ? 'text-primary font-bold bg-primary/5' : 'text-gray-700 font-medium'}`}
+                    >
+                      {state}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <input 
-              type="text" 
-              className="w-full h-16 pl-16 pr-[120px] rounded-full border-none shadow-2xl focus:ring-4 focus:ring-primary/20 text-on-surface text-lg font-body-md" 
-              placeholder="Buscar carros, eletrônicos, imóveis..." 
-            />
-            <button className="absolute right-3 top-2.5 bottom-2.5 px-6 md:px-8 bg-primary text-white font-bold rounded-full hover:bg-primary/90 transition-colors">
-              Buscar
-            </button>
+            <div className="flex-1 h-full relative flex items-center">
+              <Search className="absolute left-3 md:left-4 text-outline/70 w-5 h-5 pointer-events-none hidden sm:block" />
+              <input 
+                type="text" 
+                className="w-full h-full pl-3 sm:pl-10 md:pl-11 pr-4 bg-transparent border-transparent focus:border-transparent focus:ring-transparent outline-none focus:outline-none shadow-none text-gray-900 text-base md:text-lg font-body-md" 
+                placeholder="Buscar carros, imóveis e muito mais..." 
+              />
+            </div>
+            <div className="pr-2 pl-1 bg-white rounded-r-full hidden md:block">
+              <button className="h-12 px-6 md:px-8 bg-primary text-white font-bold rounded-full hover:bg-primary/90 transition-colors">
+                Buscar
+              </button>
+            </div>
+            <div className="pr-1 pl-1 bg-white rounded-r-full md:hidden">
+              <button className="h-10 w-10 flex items-center justify-center bg-primary text-white font-bold rounded-full hover:bg-primary/90 transition-colors">
+                <Search size={18} />
+              </button>
+            </div>
           </div>
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <span className="text-white/80 text-sm font-medium">Buscas populares:</span>

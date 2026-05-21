@@ -12,15 +12,24 @@ function getPool() {
     if (!dbUrl) {
       console.warn("DATABASE_URL is not set. API calls requiring database will fail.");
     }
+    const isLocal = dbUrl ? typeof dbUrl === 'string' && (dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1')) : true;
     pool = new Pool({
       connectionString: dbUrl || "postgres://dummy:dummy@localhost:5432/dummy",
+      ssl: isLocal ? false : { rejectUnauthorized: false },
+    });
+    pool.on('error', (err: any) => {
+      if (err.code === 'ETIMEDOUT' || err.message?.includes('ETIMEDOUT')) {
+        console.warn("Idle connection timeout. Please check if your database requires Connection Pooler URL.");
+      } else {
+        console.error('Unexpected error on idle client', err.message);
+      }
     });
   }
   return pool;
 }
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 app.use(express.json());
 
@@ -39,7 +48,14 @@ app.get("/api/ads", async (req, res) => {
     const result = await db.query("SELECT * FROM ads ORDER BY created_at DESC LIMIT 50");
     res.json(result.rows);
   } catch (error: any) {
-    console.error(error);
+    if (error.code === 'ETIMEDOUT' || error.message?.includes('ETIMEDOUT') || error.message?.includes('timeout')) {
+      console.warn("Database Connection Timeout. Please switch your Supabase DATABASE_URL to use the Connection Pooler URL (port 6543) instead of direct connection (port 5432).");
+      return res.status(503).json({ 
+        error: "Database Connection Timeout", 
+        message: "A conexão com o banco de dados falhou por tempo esgotado. Se estiver usando Supabase, certifique-se de usar a URL de 'Connection Pooler' (geralmente porta 6543) ao invés da porta padrão 5432." 
+      });
+    }
+    console.error("Database Error:", error);
     res.status(500).json({ error: error.message });
   }
 });
