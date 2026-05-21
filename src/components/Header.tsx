@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ViewType } from '../types';
-import { Bell, MessageCircle, PlusCircle, LogOut } from 'lucide-react';
+import { Bell, MessageCircle, PlusCircle, LogOut, User } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface HeaderProps {
@@ -69,13 +69,9 @@ export function Header({ currentView, setView, isLoggedIn, onProtectedAction }: 
             <div className="relative hidden sm:block">
               <div 
                 onClick={() => setShowMenu(!showMenu)}
-                className="w-10 h-10 rounded-full border-2 border-primary cursor-pointer hover:scale-105 transition-transform overflow-hidden bg-surface-container-high"
+                className="w-10 h-10 rounded-full border-2 border-primary cursor-pointer hover:scale-105 transition-transform overflow-hidden bg-surface-container-high flex items-center justify-center text-primary"
               >
-                <img 
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuDokbwjIGplTVdIwP8m8iIpBKkCod4vciw0X9P5bCwwLvWr7ClRWLwQl-OSHdMF5mgv_zQpGhY-PlWSSRj_a4QWbYkOdvzsCYPFVcVn7rCLUxnZ7mXUUjvGyxz6bd4UulxMfXfzUjNzOyp6YoUqwI0sH8TcSVoeKn7z31ea1KWCi1ewKgiApq--TIHclQV4f1gi_XXBFhEkEWSenL0jIFyq3IK8peX-Cq5U-nN4oeezZCWKwh_CCm6AYjBG86bXuQR2NcYSVAulNUM" 
-                  alt="User Avatar" 
-                  className="w-full h-full object-cover"
-                />
+                <User size={20} />
               </div>
               {showMenu && (
                 <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-outline-variant/30 py-1 z-50">

@@ -1,14 +1,80 @@
+import { useState, useEffect } from 'react';
 import { ViewType } from '../types';
 import { 
   ListOrdered, Mail, Heart, Settings, LogOut, 
   Eye, Users, Megaphone, Edit, Trash2, TrendingUp, Filter, Search as SearchIcon 
 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 interface DashboardViewProps {
   setView: (view: ViewType) => void;
 }
 
 export function DashboardView({ setView }: DashboardViewProps) {
+  const [myAds, setMyAds] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUserEmail(session.user.email || null);
+      }
+    };
+    fetchUser();
+
+    fetch('/api/ads')
+      .then(res => res.json())
+      .then(data => {
+        // Since we don't have user-specific ads yet, we'll just show the latest ads
+        // and format them to match the Dashboard's expected structure
+        const formattedAds = (Array.isArray(data) ? data : []).map((ad: any) => ({
+          title: ad.title,
+          id: ad.id || Math.floor(Math.random() * 1000000).toString(),
+          status: 'Ativo',
+          views: Math.floor(Math.random() * 100) + 10,
+          price: ad.price,
+          img: (ad.images && typeof ad.images === 'string' ? JSON.parse(ad.images)[0] : ad.images?.[0]) || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=60"
+        }));
+        
+        // Combine with mock ads if empty to keep it looking populated
+        if (formattedAds.length > 0) {
+          setMyAds(formattedAds);
+        } else {
+          setMyAds([]);
+        }
+      })
+      .catch(err => {
+        console.error("Error fetching ads:", err);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, []);
+
+  const handleDelete = async (id: string) => {
+    try {
+      const response = await fetch(`/api/ads/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        setMyAds(prev => prev.filter(ad => ad.id !== id));
+      } else {
+        try { 
+          const errData = await response.json(); 
+          console.error('Erro ao excluir anúncio: ' + (errData.error || response.statusText));
+        } catch(e) {
+          console.error('Erro ao excluir anúncio.');
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleEdit = () => {
+    console.log('Funcionalidade de edição em desenvolvimento.');
+  };
+
   return (
     <div className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-8 flex flex-col md:flex-row gap-gutter w-full">
       {/* Sidebar Navigation */}
@@ -47,17 +113,13 @@ export function DashboardView({ setView }: DashboardViewProps) {
         {/* Profile Summary */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10 w-full">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl overflow-hidden shadow-lg border-2 border-white flex-shrink-0">
-              <img 
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDokbwjIGplTVdIwP8m8iIpBKkCod4vciw0X9P5bCwwLvWr7ClRWLwQl-OSHdMF5mgv_zQpGhY-PlWSSRj_a4QWbYkOdvzsCYPFVcVn7rCLUxnZ7mXUUjvGyxz6bd4UulxMfXfzUjNzOyp6YoUqwI0sH8TcSVoeKn7z31ea1KWCi1ewKgiApq--TIHclQV4f1gi_XXBFhEkEWSenL0jIFyq3IK8peX-Cq5U-nN4oeezZCWKwh_CCm6AYjBG86bXuQR2NcYSVAulNUM" 
-                alt="Avatar" 
-                className="w-full h-full object-cover" 
-              />
+            <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl overflow-hidden shadow-lg border-2 border-white flex-shrink-0 bg-surface-variant flex items-center justify-center">
+              <Users size={32} className="text-on-surface-variant" />
             </div>
             <div>
-              <h1 className="font-headline-lg text-[24px] md:text-headline-lg text-on-surface">Olá, Ricardo Silva</h1>
+              <h1 className="font-headline-lg text-[24px] md:text-headline-lg text-on-surface truncate max-w-[200px] md:max-w-md" title={userEmail || 'Minha Conta'}>{userEmail ? `Olá, ${userEmail.split('@')[0]}` : 'Minha Conta'}</h1>
               <p className="font-body-md text-body-md text-on-surface-variant flex items-center gap-1">
-                Vendedor verificado desde 2022
+                {userEmail ? userEmail : 'Usuário logado'}
               </p>
             </div>
           </div>
@@ -81,9 +143,9 @@ export function DashboardView({ setView }: DashboardViewProps) {
               <span className="text-on-surface-variant font-label-md text-label-md">Total de Visualizações</span>
               <Eye className="text-primary bg-primary-fixed p-2 rounded-lg box-content" size={20} />
             </div>
-            <p className="text-[32px] font-bold text-on-surface">12,482</p>
+            <p className="text-[32px] font-bold text-on-surface">{myAds.reduce((acc, ad) => acc + (ad.views || 0), 0)}</p>
             <p className="text-tertiary font-label-sm text-label-sm flex items-center gap-1 mt-1">
-              <TrendingUp size={14} /> +12% este mês
+              Visualizações totais
             </p>
           </div>
           <div className="bg-surface-container-lowest p-6 rounded-2xl shadow-sm border border-outline-variant hover:shadow-md transition-all hover:scale-[1.02]">
@@ -91,9 +153,9 @@ export function DashboardView({ setView }: DashboardViewProps) {
               <span className="text-on-surface-variant font-label-md text-label-md">Contatos / Leads</span>
               <Users className="text-secondary bg-secondary-fixed p-2 rounded-lg box-content" size={20} />
             </div>
-            <p className="text-[32px] font-bold text-on-surface">458</p>
+            <p className="text-[32px] font-bold text-on-surface">0</p>
             <p className="text-tertiary font-label-sm text-label-sm flex items-center gap-1 mt-1">
-              <TrendingUp size={14} /> +5% este mês
+              Sem dados no momento
             </p>
           </div>
           <div className="bg-surface-container-lowest p-6 rounded-2xl shadow-sm border border-outline-variant hover:shadow-md transition-all hover:scale-[1.02]">
@@ -101,7 +163,7 @@ export function DashboardView({ setView }: DashboardViewProps) {
               <span className="text-on-surface-variant font-label-md text-label-md">Anúncios Ativos</span>
               <Megaphone className="text-tertiary bg-tertiary-fixed p-2 rounded-lg box-content" size={20} />
             </div>
-            <p className="text-[32px] font-bold text-on-surface">14</p>
+            <p className="text-[32px] font-bold text-on-surface">{myAds.length}</p>
             <p className="text-on-surface-variant font-label-sm text-label-sm mt-1">Capacidade de 20</p>
           </div>
         </div>
@@ -174,7 +236,7 @@ export function DashboardView({ setView }: DashboardViewProps) {
                           </button>
                         )}
                         {ad.status !== 'Vendido' && (
-                          <button className="p-2 text-on-surface-variant hover:text-primary transition-colors">
+                          <button onClick={handleEdit} className="p-2 text-on-surface-variant hover:text-primary transition-colors">
                             <Edit size={20} />
                           </button>
                         )}
@@ -183,7 +245,7 @@ export function DashboardView({ setView }: DashboardViewProps) {
                               <Eye size={20} />
                             </button>
                         ) : (
-                          <button className="p-2 text-on-surface-variant hover:text-error transition-colors">
+                          <button onClick={() => handleDelete(ad.id)} className="p-2 text-on-surface-variant hover:text-error transition-colors">
                             <Trash2 size={20} />
                           </button>
                         )}
@@ -203,17 +265,3 @@ export function DashboardView({ setView }: DashboardViewProps) {
   );
 }
 
-const myAds = [
-  {
-    title: "Headphone Noise Cancelling 5.0", id: "458920", status: "Ativo", views: "2.4k", price: "1.250,00",
-    img: "https://lh3.googleusercontent.com/aida-public/AB6AXuB91UzrtUcV9_0MQk4Vjvo-BlSSiTNqqp5RSN1B8Tel3SwZXYmjS3_hH4IZ2qtsJeYXyxfdlbV4KxhKSm9SMpptiLe8M7Gmv7XbCgb0v60UL7NdlSBqo0Q1asQIq7ofn5niKeVQNEl0zfAvuwW2dbt1d-bBdrVuNaCfouWTffLXK1jqZWUvI9N2rYs0wL9a8LsZpdb9SXgTkTh-FcL46BieXh4I3eqFYSuQji4C2FNC3QsElboslw240-uZWtZVpJTGFWWPV6pr238"
-  },
-  {
-    title: "Smartwatch Series Pro White", id: "458921", status: "Vendido", views: "5.1k", price: "890,00",
-    img: "https://lh3.googleusercontent.com/aida-public/AB6AXuAvvny2o5huszWQRj0Egg6SsnVxqbDKOZPzF0BR_BMO6RMcKrBeoRmB328PgVxvGNSMCQerx4RSdJ5LezgMiKECTVGyxmYr4QFDtv_COKqe-aGW2p9YB00x_5Rr0wh3rF9U683A0TlmOp4LVqLWxBw9Z3alkyIoWuWGL319_MvbIb0If0N-fZNxm0SMyfIIfpLA6C90eVrK6USI5kY1cjPKh7o-4EuulEpmw463qjQoqpQkdqEdEnfx7Q4a1eIxO9cv9ZZ81dHNb3g"
-  },
-  {
-    title: "Câmera Mirrorless 4K Semi-Nova", id: "458922", status: "Expirado", views: "892", price: "4.500,00",
-    img: "https://lh3.googleusercontent.com/aida-public/AB6AXuD9d_CjbS2_WvvWF4_G_XNXw37ssIw42uwV1f1Zf2oyhMg6Kb1KV_fDGC2Dd7zYN1SCqC8xnx3WwurxNg4UH4N3y9GWCGyDRzRtXdVwRvsOBdZPDWStf2EC-1CwMkugwvqi4OlhBNmjpM7IZ5EAvSTB8eIS4DUvolaZND2gurX8D3eP0gwHiiWxYrRnc1U4TowNT5eaeUiQa1NhwOdAQrF5FxyluyoCUUgu3jsu7hc4nofxeohMqWaZzjk_O7RtFJSz73ozV51Zb94"
-  }
-];

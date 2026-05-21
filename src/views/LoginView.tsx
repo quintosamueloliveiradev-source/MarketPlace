@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { ViewType } from '../types';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -31,7 +31,7 @@ export function LoginView({ setView, onLoginSuccess }: LoginViewProps) {
           password
         });
         if (error) throw error;
-        alert('Cadastro realizado! Verifique seu email ou tente fazer login.');
+        console.log('Cadastro realizado! Verifique seu email ou tente fazer login.');
         setIsSignUp(false);
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({

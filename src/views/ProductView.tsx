@@ -124,19 +124,14 @@ export function ProductView({ setView }: ProductViewProps) {
         <div className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant shadow-sm flex flex-col gap-4">
           <h3 className="font-title-lg text-title-lg text-on-surface">Informações do Vendedor</h3>
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full overflow-hidden bg-primary-fixed flex-shrink-0">
-              <img 
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBPn4TizD4hE35JNTip7T4lQ5RA0IeAL5gTTpr00s4u5aVolaCKmPkcnJ7o55sH70YjMDcx4PyZJNhIt7Rwvwn74BwTdJ_zDggzrTaJl85NzirR9awSf1z7hdsGselstD1hIXQIzvJhqXfQLVFwN3VkWkeCe8NMb-_yVOtzeieP9G2OSBHR5XMoHEWoQS1qZhxtdq9BbxzR2nV6otBIG5QnTgl0jFSb6Pq-EWRrTvNmDWd3vVB3q0GvEKLIzcTSMZsK1p9F7tBEyZs" 
-                alt="Marcos Oliveira" className="w-full h-full object-cover" 
-              />
+            <div className="w-16 h-16 rounded-full overflow-hidden bg-surface-container-high flex-shrink-0 flex items-center justify-center text-primary">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-user"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             </div>
             <div>
-              <p className="font-bold text-body-md text-on-surface">Marcos Oliveira</p>
-              <p className="text-label-md text-on-surface-variant">Membro desde Out 2021</p>
+              <p className="font-bold text-body-md text-on-surface">Vendedor Local</p>
+              <p className="text-label-md text-on-surface-variant">Membro da plataforma</p>
               <div className="flex items-center gap-1 mt-1">
-                {[1,2,3,4].map(k => <Star key={k} size={16} fill="currentColor" className="text-secondary-container" />)}
-                <Star size={16} fill="currentColor" className="text-secondary-container opacity-50" />
-                <span className="text-label-sm font-bold text-on-surface ml-1">4.8 (124)</span>
+                {[1,2,3,4,5].map(k => <Star key={k} size={16} fill="currentColor" className="text-secondary-container" />)}
               </div>
             </div>
           </div>
