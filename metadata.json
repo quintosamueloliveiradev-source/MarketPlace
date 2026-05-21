@@ -1,0 +1,6 @@
+{
+  "name": "MarketPlace",
+  "description": "Um marketplace estilo OLX com listagem de produtos, dashboard de usuário, chat em tempo real e criação de anúncios.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
