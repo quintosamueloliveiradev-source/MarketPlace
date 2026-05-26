@@ -30,14 +30,21 @@ export function DashboardView({ setView, onEditAd }: DashboardViewProps) {
       .then(data => {
         // Since we don't have user-specific ads yet, we'll just show the latest ads
         // and format them to match the Dashboard's expected structure
-        const formattedAds = (Array.isArray(data) ? data : []).map((ad: any) => ({
-          title: ad.title,
-          id: ad.id || Math.floor(Math.random() * 1000000).toString(),
-          status: 'Ativo',
-          views: Math.floor(Math.random() * 100) + 10,
-          price: ad.price,
-          img: (ad.images && typeof ad.images === 'string' ? JSON.parse(ad.images)[0] : ad.images?.[0]) || "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=60"
-        }));
+        const formattedAds = (Array.isArray(data) ? data : []).map((ad: any) => {
+          let imgs = [];
+          try {
+            imgs = typeof ad.images === 'string' ? JSON.parse(ad.images) : ad.images;
+            if (!Array.isArray(imgs)) imgs = [];
+          } catch(e) {}
+          return {
+            title: ad.title,
+            id: ad.id || Math.floor(Math.random() * 1000000).toString(),
+            status: 'Ativo',
+            views: Math.floor(Math.random() * 100) + 10,
+            price: ad.price,
+            img: imgs.length > 0 ? imgs[0] : "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=60"
+          };
+        });
         
         // Combine with mock ads if empty to keep it looking populated
         if (formattedAds.length > 0) {

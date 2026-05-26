@@ -18,6 +18,7 @@ export default function App() {
   const [isInitializing, setIsInitializing] = useState(true);
   const [intendedView, setIntendedView] = useState<ViewType>('explore');
   const [editingAdId, setEditingAdId] = useState<string | null>(null);
+  const [viewingAdId, setViewingAdId] = useState<string | null>(null);
 
   useEffect(() => {
     localStorage.setItem('currentView', view);
@@ -63,8 +64,8 @@ export default function App() {
       {view !== 'login' && <Header currentView={view} setView={setView} isLoggedIn={isLoggedIn} onProtectedAction={handleProtectedAction} />}
       
       <main className="flex-grow flex flex-col w-full">
-        {view === 'explore' && <ExploreView setView={setView} />}
-        {view === 'product' && <ProductView setView={setView} />}
+        {view === 'explore' && <ExploreView setView={setView} onViewAd={(id) => { setViewingAdId(id); setView('product'); }} />}
+        {view === 'product' && <ProductView setView={setView} adId={viewingAdId} />}
         {view === 'dashboard' && <DashboardView setView={setView} onEditAd={(id) => { setEditingAdId(id); setView('edit'); }} />}
         {view === 'chat' && <ChatView />}
         {view === 'create' && <CreateAdView setView={setView} onClearEdit={() => setEditingAdId(null)} />}

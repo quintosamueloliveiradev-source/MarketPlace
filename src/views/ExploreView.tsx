@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 
 interface ExploreViewProps {
   setView: (view: ViewType) => void;
+  onViewAd?: (id: string) => void;
 }
 
-export function ExploreView({ setView }: ExploreViewProps) {
+export function ExploreView({ setView, onViewAd }: ExploreViewProps) {
   const [ads, setAds] = useState<any[]>([]);
   const [loadingAds, setLoadingAds] = useState(true);
   const [dbError, setDbError] = useState<string | null>(null);
@@ -24,15 +25,22 @@ export function ExploreView({ setView }: ExploreViewProps) {
           setDbError("Não foi possível carregar os anúncios neste momento.");
           setAds([]);
         } else if (Array.isArray(data)) {
-          setAds(data.map(d => ({
-            id: d.id,
-            title: d.title,
-            price: d.price,
-            location: d.location,
-            time: 'Recentemente',
-            image: (d.images && d.images[0]) || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=60',
-            liked: false
-          })));
+          setAds(data.map(d => {
+            let imgs = [];
+            try {
+              imgs = typeof d.images === 'string' ? JSON.parse(d.images) : d.images;
+              if (!Array.isArray(imgs)) imgs = [];
+            } catch(e) {}
+            return {
+              id: d.id,
+              title: d.title,
+              price: d.price,
+              location: d.location,
+              time: 'Recentemente',
+              image: (imgs.length > 0) ? imgs[0] : 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=60',
+              liked: false
+            };
+          }));
         }
       })
       .catch((err) => {
@@ -181,7 +189,10 @@ export function ExploreView({ setView }: ExploreViewProps) {
             <div 
               key={i} 
               className="bg-white rounded-2xl border border-outline-variant/30 overflow-hidden card-lift cursor-pointer group"
-              onClick={() => setView('product')}
+              onClick={() => {
+                if (onViewAd) onViewAd(item.id);
+                else setView('product');
+              }}
             >
               <div className="relative aspect-[4/3]">
                 <img src={item.image} alt={item.title} className="w-full h-full object-cover" />

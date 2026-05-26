@@ -1,13 +1,67 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ViewType } from '../types';
 import { ChevronRight, Heart, Star, ShieldCheck, Truck, MessageCircle } from 'lucide-react';
 
 interface ProductViewProps {
   setView: (view: ViewType) => void;
+  adId?: string | null;
 }
 
-export function ProductView({ setView }: ProductViewProps) {
-  const [activeImage, setActiveImage] = useState(images[0]);
+export function ProductView({ setView, adId }: ProductViewProps) {
+  const [productData, setProductData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [activeImage, setActiveImage] = useState<string>('');
+
+  useEffect(() => {
+    if (!adId) {
+      setLoading(false);
+      return;
+    }
+    
+    setLoading(true);
+    fetch(`/api/ads/${adId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (!data.error) {
+          let imgs = [];
+          try {
+            imgs = typeof data.images === 'string' ? JSON.parse(data.images) : data.images;
+            if (!Array.isArray(imgs)) imgs = [];
+          } catch(e) {}
+          
+          setProductData({
+            ...data,
+            images: imgs.length > 0 ? imgs : ['https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=60']
+          });
+          setActiveImage(imgs.length > 0 ? imgs[0] : 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=60');
+        }
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [adId]);
+
+  if (loading) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <svg className="animate-spin h-8 w-8 text-primary" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span className="text-on-surface-variant">Carregando anúncio...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!productData) {
+    return (
+      <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
+        <h2 className="text-title-lg">Anúncio não encontrado</h2>
+        <button onClick={() => setView('explore')} className="text-primary hover:underline">Voltar para Explorar</button>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-8 grid grid-cols-1 lg:grid-cols-12 gap-gutter w-full">
@@ -17,9 +71,9 @@ export function ProductView({ setView }: ProductViewProps) {
         <nav className="flex text-label-md font-label-md text-on-surface-variant gap-2 items-center">
           <button onClick={() => setView('explore')} className="hover:text-primary">Início</button>
           <ChevronRight size={16} />
-          <button className="hover:text-primary">Eletrônicos</button>
+          <button className="hover:text-primary capitalize">{productData.category}</button>
           <ChevronRight size={16} />
-          <span className="text-on-surface">Câmera Profissional</span>
+          <span className="text-on-surface truncate max-w-[200px]">{productData.title}</span>
         </nav>
 
         {/* Product Image Gallery */}
@@ -27,7 +81,7 @@ export function ProductView({ setView }: ProductViewProps) {
           <div className="relative w-full aspect-[4/3] md:aspect-video lg:aspect-[4/3] rounded-xl overflow-hidden bg-surface-container shadow-sm transition-opacity duration-300">
             <img 
               src={activeImage} 
-              alt="Produto principal" 
+              alt={productData.title} 
               className="w-full h-full object-cover transition-opacity duration-300"
             />
             <button className="absolute top-4 right-4 p-2 bg-surface/80 backdrop-blur-md rounded-full shadow-md text-on-surface hover:text-error transition-colors">
@@ -35,13 +89,13 @@ export function ProductView({ setView }: ProductViewProps) {
             </button>
           </div>
           <div className="flex gap-4 overflow-x-auto hide-scrollbar pb-2">
-            {images.map((img, i) => (
+            {productData.images.map((img: string, i: number) => (
               <img 
                 key={i}
                 src={img} 
                 onClick={() => setActiveImage(img)}
                 className={`w-20 h-20 md:w-24 md:h-24 rounded-lg object-cover cursor-pointer transition-all border-2 ${activeImage === img ? 'border-primary opacity-100' : 'border-transparent opacity-70 hover:opacity-100'}`}
-                alt="Miniatura"
+                alt={`Miniatura ${i+1}`}
               />
             ))}
           </div>
@@ -51,15 +105,15 @@ export function ProductView({ setView }: ProductViewProps) {
         <section className="bg-surface-container-lowest p-6 md:p-8 rounded-xl border border-outline-variant shadow-sm flex flex-col gap-6">
           <div>
             <h2 className="font-headline-md text-headline-md text-on-surface mb-2">Descrição do Produto</h2>
-            <p className="text-on-surface-variant font-body-md leading-relaxed">
-              Câmera profissional em estado impecável, utilizada apenas em estúdio controlado. Este equipamento oferece uma resolução excepcional de 45MP, sistema de autofoco por IA e gravação de vídeo em 8K. Ideal para fotógrafos que buscam a máxima fidelidade de cores e desempenho em qualquer condição de luz.
+            <p className="text-on-surface-variant font-body-md leading-relaxed whitespace-pre-wrap">
+              {productData.description}
             </p>
           </div>
           
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 pt-6 border-t border-outline-variant">
             <div className="flex flex-col">
-              <span className="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">Marca</span>
-              <span className="text-body-md font-bold text-on-surface">Vision Pro</span>
+              <span className="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">Categoria</span>
+              <span className="text-body-md font-bold text-on-surface capitalize">{productData.category}</span>
             </div>
             <div className="flex flex-col">
               <span className="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">Estado</span>
@@ -67,15 +121,8 @@ export function ProductView({ setView }: ProductViewProps) {
             </div>
             <div className="flex flex-col">
               <span className="text-label-sm font-label-sm text-on-surface-variant uppercase tracking-wider">Localização</span>
-              <span className="text-body-md font-bold text-on-surface">São Paulo, SP</span>
+              <span className="text-body-md font-bold text-on-surface">{productData.location}</span>
             </div>
-          </div>
-          
-          <div className="flex flex-wrap gap-2 pt-4">
-            <span className="px-4 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant text-label-md font-label-md">#fotografia</span>
-            <span className="px-4 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant text-label-md font-label-md">#camera</span>
-            <span className="px-4 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant text-label-md font-label-md">#profissional</span>
-            <span className="px-4 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant text-label-md font-label-md">#seminovo</span>
           </div>
         </section>
       </div>
@@ -86,18 +133,20 @@ export function ProductView({ setView }: ProductViewProps) {
           <div className="mb-6">
             <div className="flex justify-between items-start mb-2">
               <span className="px-2 py-0.5 rounded bg-tertiary-fixed text-on-tertiary-fixed text-label-sm font-bold">DESTAQUE</span>
-              <span className="text-on-surface-variant text-label-sm font-label-sm">Postado há 2 horas</span>
+              <span className="text-on-surface-variant text-label-sm font-label-sm">Postado recentemente</span>
             </div>
-            <h1 className="font-headline-lg text-[28px] md:text-headline-lg text-on-surface mb-2 leading-tight">Câmera Profissional Vision X-Pro 45MP</h1>
+            <h1 className="font-headline-lg text-[28px] md:text-headline-lg text-on-surface mb-2 leading-tight">{productData.title}</h1>
             <div className="flex flex-col sm:flex-row sm:items-baseline gap-2">
-              <span className="font-display-lg text-[36px] md:text-[40px] text-primary leading-tight">R$ 12.500</span>
-              <span className="text-on-surface-variant text-label-md font-label-md">ou 12x de R$ 1.150</span>
+              <span className="font-display-lg text-[36px] md:text-[40px] text-primary leading-tight">
+              {Number(productData.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </span>
             </div>
           </div>
 
           <div className="flex flex-col gap-3">
             <button className="w-full py-4 bg-primary text-white rounded-xl font-bold text-title-lg hover:bg-primary-container transition-all active:scale-95 shadow-md shadow-primary/20">
               Comprar Agora
+
             </button>
             <button 
               onClick={() => setView('chat')}
