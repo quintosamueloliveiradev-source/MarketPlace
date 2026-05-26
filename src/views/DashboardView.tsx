@@ -17,15 +17,20 @@ export function DashboardView({ setView, onEditAd }: DashboardViewProps) {
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUserEmail(session.user.email || null);
+    const fetchUserAndAds = async () => {
+      let email = null;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          email = session.user.email || null;
+          setUserEmail(email);
+        }
+      } catch (e) {
+        console.warn("Supabase auth not available", e);
       }
-    };
-    fetchUser();
-
-    fetch('/api/ads')
+      
+      const endpoint = email ? `/api/ads?user_email=${encodeURIComponent(email)}` : '/api/ads';
+      fetch(endpoint)
       .then(res => res.json())
       .then(data => {
         // Since we don't have user-specific ads yet, we'll just show the latest ads
@@ -59,6 +64,8 @@ export function DashboardView({ setView, onEditAd }: DashboardViewProps) {
       .finally(() => {
         setIsLoading(false);
       });
+    };
+    fetchUserAndAds();
   }, []);
 
   const handleDelete = async (id: string) => {

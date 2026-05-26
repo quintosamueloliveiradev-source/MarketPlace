@@ -64,7 +64,14 @@ app.get("/api/ads", async (req, res) => {
       return res.status(500).json({ error: "No Database Configured", message: "Database URL is not configured." });
     }
     const db = getPool();
-    const result = await db.query("SELECT * FROM ads ORDER BY created_at DESC LIMIT 50");
+    const { user_email } = req.query;
+    let query = "SELECT * FROM ads ORDER BY created_at DESC LIMIT 50";
+    let params: any[] = [];
+    if (user_email) {
+      query = "SELECT * FROM ads WHERE user_email = $1 ORDER BY created_at DESC LIMIT 50";
+      params = [user_email];
+    }
+    const result = await db.query(query, params);
     res.json(result.rows);
   } catch (error: any) {
     if (error.code === 'ENOTFOUND' || error.message?.includes('ENOTFOUND')) {
@@ -99,11 +106,11 @@ app.post("/api/ads", async (req, res) => {
     if (!process.env.DATABASE_URL) {
       return res.status(500).json({ error: "No Database Configured", message: "Database URL is not configured." });
     }
-    const { title, category, price, description, images, location } = req.body;
+    const { title, category, price, description, images, location, user_email } = req.body;
     const db = getPool();
     const result = await db.query(
-      "INSERT INTO ads (title, category, price, description, images, location) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
-      [title, category, price, description, JSON.stringify(images), location]
+      "INSERT INTO ads (title, category, price, description, images, location, user_email) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
+      [title, category, price, description, JSON.stringify(images), location, user_email || null]
     );
     res.json(result.rows[0]);
   } catch (error: any) {

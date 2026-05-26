@@ -2,6 +2,8 @@ import { ViewType } from '../types';
 import { CloudUpload, CheckCircle, Star, ShieldCheck, Gem } from 'lucide-react';
 import React, { useState } from 'react';
 
+import { supabase } from '../lib/supabase';
+
 interface CreateAdViewProps {
   setView: (view: ViewType) => void;
   editId?: string;
@@ -59,6 +61,9 @@ export function CreateAdView({ setView, editId, onClearEdit }: CreateAdViewProps
     setIsSubmitting(true);
     
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const user_email = session?.user?.email || null;
+
       const formData = new FormData(e.currentTarget);
       const data = {
         title: formData.get('title'),
@@ -67,6 +72,7 @@ export function CreateAdView({ setView, editId, onClearEdit }: CreateAdViewProps
         description: formData.get('description'),
         images: selectedImages.length > 0 ? selectedImages : ["https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&auto=format&fit=crop&q=60"], // Fallback if no images
         location: `${formData.get('cep') || ''} - ${formData.get('cidade') || ''}`.replace(/^- |-$/g, ''),
+        user_email,
       };
 
       const endpoint = editId ? `/api/ads/${editId}` : '/api/ads';
