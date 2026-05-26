@@ -17,14 +17,24 @@ export function ChatView({ preselectChat, preselectAdId }: ChatViewProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    let interval: any;
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user?.email) {
         setUserEmail(session.user.email);
         fetchMessages(session.user.email);
+        
+        // Auto-refresh every 3 seconds
+        interval = setInterval(() => {
+          fetchMessages(session.user.email);
+        }, 3000);
       } else {
         setLoading(false);
       }
     });
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, []);
 
   useEffect(() => {
@@ -37,7 +47,10 @@ export function ChatView({ preselectChat, preselectAdId }: ChatViewProps) {
       const data = await res.json();
       
       if (!data.error) {
-        setMessages(data);
+        setMessages((prev) => {
+          if (JSON.stringify(prev) !== JSON.stringify(data)) return data;
+          return prev;
+        });
         
         // Group by user
         const grouped = data.reduce((acc: any, msg: any) => {
@@ -59,7 +72,11 @@ export function ChatView({ preselectChat, preselectAdId }: ChatViewProps) {
           return acc;
         }, {});
         
-        setConversations(Object.values(grouped).sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+        const newConvs = Object.values(grouped).sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        setConversations((prev) => {
+          if (JSON.stringify(prev) !== JSON.stringify(newConvs)) return newConvs;
+          return prev;
+        });
       }
     } catch (e) {
       console.error(e);
