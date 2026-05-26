@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { MessageCircle, Send, ArrowLeft, ArrowDown } from 'lucide-react';
+import { MessageCircle, Send, ArrowLeft } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface ChatViewProps {
@@ -340,10 +340,13 @@ export function ChatView({ preselectChat, preselectAdId }: ChatViewProps) {
                   setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
                 }
               }}
-              className={`flex flex-shrink-0 items-center justify-center w-8 h-8 rounded-full transition-colors ${autoScroll ? 'bg-primary/10 text-primary shadow-sm' : 'bg-surface-container-highest text-on-surface-variant'}`}
+              className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 ease-in-out cursor-pointer ${autoScroll ? 'bg-primary' : 'bg-surface-container-highest border border-outline-variant/30'}`}
               title={autoScroll ? "Desativar rolagem automática" : "Ativar rolagem automática"}
+              type="button"
+              role="switch"
+              aria-checked={autoScroll}
             >
-              <ArrowDown size={18} className={autoScroll ? "" : "opacity-50"} />
+              <span className={`absolute top-[2px] left-[2px] h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ease-in-out ${autoScroll ? 'translate-x-[20px]' : 'translate-x-0'}`} />
             </button>
           </div>
           
