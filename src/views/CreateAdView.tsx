@@ -47,7 +47,13 @@ export function CreateAdView({ setView }: CreateAdViewProps) {
         body: JSON.stringify(data)
       });
       
-      const result = await resp.json();
+      let result;
+      try {
+        result = await resp.json();
+      } catch (e) {
+        throw new Error("Erro no servidor (A função falhou). Verifique se você está usando a porta 6543 (Connection Pooling) no DATABASE_URL da Vercel.");
+      }
+
       if (resp.ok && !result.error) {
         console.log('Anúncio publicado com sucesso no banco!');
         setView('dashboard');

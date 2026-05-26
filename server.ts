@@ -1,6 +1,5 @@
 import express from "express";
 import path from "path";
-import { createServer as createViteServer } from "vite";
 import pkg, { Pool as PgPool } from "pg";
 const { Pool } = pkg;
 
@@ -33,6 +32,8 @@ function getPool() {
     pool = new Pool({
       connectionString: dbUrl || "postgres://dummy:dummy@localhost:5432/dummy",
       ssl: isLocal ? false : { rejectUnauthorized: false },
+      connectionTimeoutMillis: 5000,
+      query_timeout: 5000,
     });
     pool.on('error', (err: any) => {
       if (err.code === 'ETIMEDOUT' || err.message?.includes('ETIMEDOUT')) {
@@ -137,6 +138,7 @@ app.get("/api/auth/me", (req, res) => {
 async function setupVite() {
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
