@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { MessageCircle, Send, ArrowLeft } from 'lucide-react';
+import { MessageCircle, Send, ArrowLeft, ArrowDown } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface ChatViewProps {
@@ -15,6 +15,7 @@ export function ChatView({ preselectChat, preselectAdId }: ChatViewProps) {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [typingUsers, setTypingUsers] = useState<Record<string, boolean>>({});
+  const [autoScroll, setAutoScroll] = useState(true);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const channelRef = useRef<any>(null);
@@ -89,8 +90,10 @@ export function ChatView({ preselectChat, preselectAdId }: ChatViewProps) {
   }, []);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, activeChat, typingUsers]);
+    if (autoScroll) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, activeChat, typingUsers, autoScroll]);
 
   const fetchMessages = async (email: string) => {
     try {
@@ -316,17 +319,32 @@ export function ChatView({ preselectChat, preselectAdId }: ChatViewProps) {
       {/* Main Chat Area */}
       {activeChat ? (
         <div className={`flex-1 flex flex-col bg-surface-container-lowest min-w-0 ${!activeChat ? 'hidden md:flex' : 'flex'}`}>
-          <div className="p-4 border-b border-outline-variant/30 flex items-center gap-4 bg-surface">
-            <button className="md:hidden text-on-surface-variant hover:text-on-surface p-2" onClick={() => setActiveChat(null)}>
-              <ArrowLeft size={24} />
+          <div className="p-4 border-b border-outline-variant/30 flex items-center justify-between bg-surface sticky top-0 z-10 w-full">
+            <div className="flex items-center gap-4">
+              <button className="md:hidden text-on-surface-variant hover:text-on-surface p-2 -ml-2" onClick={() => setActiveChat(null)}>
+                <ArrowLeft size={24} />
+              </button>
+              <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-label-lg flex-shrink-0">
+                {activeChat.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <p className="font-bold text-title-sm text-on-surface truncate">{activeChat}</p>
+                {typingUsers[activeChat] && <p className="text-label-sm text-primary animate-pulse">digitando...</p>}
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                const newValue = !autoScroll;
+                setAutoScroll(newValue);
+                if (newValue) {
+                  setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+                }
+              }}
+              className={`flex flex-shrink-0 items-center justify-center w-8 h-8 rounded-full transition-colors ${autoScroll ? 'bg-primary/10 text-primary shadow-sm' : 'bg-surface-container-highest text-on-surface-variant'}`}
+              title={autoScroll ? "Desativar rolagem automática" : "Ativar rolagem automática"}
+            >
+              <ArrowDown size={18} className={autoScroll ? "" : "opacity-50"} />
             </button>
-            <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-label-lg flex-shrink-0">
-              {activeChat.charAt(0).toUpperCase()}
-            </div>
-            <div>
-              <p className="font-bold text-title-sm text-on-surface truncate">{activeChat}</p>
-              {typingUsers[activeChat] && <p className="text-label-sm text-primary animate-pulse">digitando...</p>}
-            </div>
           </div>
           
           <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 flex flex-col gap-4 bg-surface-container-lowest w-full">
