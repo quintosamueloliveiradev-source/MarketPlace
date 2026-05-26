@@ -14,15 +14,63 @@ export function ChatView({ preselectChat, preselectAdId }: ChatViewProps) {
   const [newMessage, setNewMessage] = useState('');
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [typingUsers, setTypingUsers] = useState<Record<string, boolean>>({});
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const channelRef = useRef<any>(null);
+  const typingTimeoutRef = useRef<any>(null);
+  const isTypingLocalRef = useRef(false);
+
+  const playNotificationSound = () => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(500, audioCtx.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.1);
+      
+      gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+      gainNode.gain.linearRampToValueAtTime(0.3, audioCtx.currentTime + 0.05);
+      gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
+      
+      oscillator.start(audioCtx.currentTime);
+      oscillator.stop(audioCtx.currentTime + 0.2);
+    } catch(e) {
+      console.log("Audio not supported", e);
+    }
+  };
 
   useEffect(() => {
     let interval: any;
+    let channel: any;
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user?.email) {
         setUserEmail(session.user.email);
         fetchMessages(session.user.email);
         
+        channel = supabase.channel('chat:typing', {
+          config: { broadcast: { ack: false } }
+        });
+
+        channel.on('broadcast', { event: 'typing' }, (payload: any) => {
+          if (payload.payload.receiver === session.user.email) {
+            setTypingUsers(prev => ({
+              ...prev,
+              [payload.payload.sender]: payload.payload.isTyping
+            }));
+          }
+        }).subscribe();
+
+        channelRef.current = channel;
+
         // Auto-refresh every 3 seconds
         interval = setInterval(() => {
           fetchMessages(session.user.email);
@@ -34,12 +82,13 @@ export function ChatView({ preselectChat, preselectAdId }: ChatViewProps) {
 
     return () => {
       if (interval) clearInterval(interval);
+      if (channel) supabase.removeChannel(channel);
     };
   }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, activeChat]);
+  }, [messages, activeChat, typingUsers]);
 
   const fetchMessages = async (email: string) => {
     try {
@@ -48,7 +97,16 @@ export function ChatView({ preselectChat, preselectAdId }: ChatViewProps) {
       
       if (!data.error) {
         setMessages((prev) => {
-          if (JSON.stringify(prev) !== JSON.stringify(data)) return data;
+          if (JSON.stringify(prev) !== JSON.stringify(data)) {
+            if (prev.length > 0 && data.length > prev.length) {
+              const newMsgs = data.slice(prev.length);
+              const hasNewForMe = newMsgs.some((m: any) => m.receiver_email === email);
+              if (hasNewForMe) {
+                 playNotificationSound();
+              }
+            }
+            return data;
+          }
           return prev;
         });
         
@@ -90,11 +148,60 @@ export function ChatView({ preselectChat, preselectAdId }: ChatViewProps) {
     (m.receiver_email === userEmail && m.sender_email === activeChat)
   );
 
+  const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value);
+    
+    if (!channelRef.current || !activeChat || !userEmail) return;
+
+    if (e.target.value.trim().length > 0) {
+      if (!isTypingLocalRef.current) {
+        isTypingLocalRef.current = true;
+        channelRef.current.send({
+          type: 'broadcast',
+          event: 'typing',
+          payload: { sender: userEmail, receiver: activeChat, isTyping: true }
+        });
+      }
+      
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      
+      typingTimeoutRef.current = setTimeout(() => {
+        isTypingLocalRef.current = false;
+        if (channelRef.current && activeChat && userEmail) {
+           channelRef.current.send({
+            type: 'broadcast',
+            event: 'typing',
+            payload: { sender: userEmail, receiver: activeChat, isTyping: false }
+          });
+        }
+      }, 2000);
+    } else {
+       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+       if (isTypingLocalRef.current) {
+         isTypingLocalRef.current = false;
+         channelRef.current.send({
+          type: 'broadcast',
+          event: 'typing',
+          payload: { sender: userEmail, receiver: activeChat, isTyping: false }
+         });
+       }
+    }
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !activeChat || !userEmail) return;
 
     try {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+      if (isTypingLocalRef.current && channelRef.current) {
+        isTypingLocalRef.current = false;
+        channelRef.current.send({
+          type: 'broadcast',
+          event: 'typing',
+          payload: { sender: userEmail, receiver: activeChat, isTyping: false }
+        });
+      }
       // Find the ad_id associated with this conversation, fallback to preselectAdId
       const activeConv = conversations.find(c => c.otherPerson === activeChat);
       const ad_id = activeConv?.ad_id || preselectAdId || null;
@@ -189,7 +296,13 @@ export function ChatView({ preselectChat, preselectAdId }: ChatViewProps) {
                         </span>
                       </div>
                       <p className="text-label-sm font-label-sm text-primary truncate mb-0.5">{conv.ad_title}</p>
-                      <p className="text-body-sm text-on-surface-variant truncate">{conv.lastMessage}</p>
+                      <p className="text-body-sm text-on-surface-variant truncate">
+                        {typingUsers[conv.otherPerson] ? (
+                           <span className="italic text-primary animate-pulse">Digitando...</span>
+                        ) : (
+                           conv.lastMessage
+                        )}
+                      </p>
                     </div>
                   </button>
                 </li>
@@ -211,6 +324,7 @@ export function ChatView({ preselectChat, preselectAdId }: ChatViewProps) {
             </div>
             <div>
               <p className="font-bold text-title-sm text-on-surface truncate">{activeChat}</p>
+              {typingUsers[activeChat] && <p className="text-label-sm text-primary animate-pulse">digitando...</p>}
             </div>
           </div>
           
@@ -228,6 +342,13 @@ export function ChatView({ preselectChat, preselectAdId }: ChatViewProps) {
                 </div>
               );
             })}
+            {typingUsers[activeChat] && (
+               <div className="flex justify-start">
+                  <div className="bg-surface-container-high rounded-2xl px-4 py-2 rounded-bl-sm">
+                    <p className="text-body-md text-on-surface-variant italic text-sm animate-pulse">Digitando...</p>
+                  </div>
+               </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
           
@@ -236,7 +357,7 @@ export function ChatView({ preselectChat, preselectAdId }: ChatViewProps) {
               <input 
                 type="text" 
                 value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
+                onChange={handleTyping}
                 placeholder="Digite sua mensagem..." 
                 className="flex-1 px-4 py-3 rounded-full border border-outline-variant bg-surface-container-lowest focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none"
               />
