@@ -11,26 +11,33 @@ import { ViewType } from './types';
 import { supabase } from './lib/supabase';
 
 export default function App() {
-  const [view, setView] = useState<ViewType>('explore');
+  const [view, setView] = useState<ViewType>(() => {
+    return (localStorage.getItem('currentView') as ViewType) || 'explore';
+  });
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [intendedView, setIntendedView] = useState<ViewType>('explore');
+
+  useEffect(() => {
+    localStorage.setItem('currentView', view);
+  }, [view]);
 
   useEffect(() => {
     // Check active session on load
     supabase.auth.getSession().then(({ data: { session } }) => {
       setIsLoggedIn(!!session);
+      setIsInitializing(false);
+      
+      if (!session && view !== 'explore' && view !== 'product' && view !== 'login') {
+        setView('explore');
+      }
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setIsLoggedIn(!!session);
-      if (!session) {
-        setView((prevView) => {
-          if (prevView !== 'explore' && prevView !== 'product' && prevView !== 'login') {
-            return 'explore';
-          }
-          return prevView;
-        });
+      if (event === 'SIGNED_OUT') {
+        setView('explore');
       }
     });
 

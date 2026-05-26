@@ -48,16 +48,16 @@ export function CreateAdView({ setView }: CreateAdViewProps) {
       });
       
       const result = await resp.json();
-      if (result.error) {
-        console.error('Erro ao publicar anúncio: ' + result.error);
-        // Continue to dashboard anyway to unblock user
-      } else {
+      if (resp.ok && !result.error) {
         console.log('Anúncio publicado com sucesso no banco!');
+        setView('dashboard');
+      } else {
+        console.error('Erro ao publicar anúncio: ', result.error || result.message);
+        alert(`Erro ao publicar anúncio: ${result.error || result.message || 'Verifique as variáveis de ambiente no Vercel (DATABASE_URL).'}`);
       }
-      setView('dashboard');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      console.error('Ocorreu um erro de conexão.');
+      alert('Ocorreu um erro de conexão: ' + err.message);
     } finally {
       setIsSubmitting(false);
     }
