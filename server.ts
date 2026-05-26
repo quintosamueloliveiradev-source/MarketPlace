@@ -58,6 +58,39 @@ app.get("/api/health", (req, res) => {
 });
 
 // Get all ads
+// Typing Status API (In-Memory)
+const typingStates = new Map<string, number>();
+
+app.post("/api/messages/typing", (req, res) => {
+  const { sender, receiver, isTyping } = req.body;
+  const key = `${sender}:${receiver}`;
+  if (isTyping) {
+    typingStates.set(key, Date.now());
+  } else {
+    typingStates.delete(key);
+  }
+  res.json({ ok: true });
+});
+
+app.get("/api/messages/typing", (req, res) => {
+  const { user_email } = req.query;
+  const now = Date.now();
+  const typingUsers: string[] = [];
+  
+  for (const [key, timestamp] of typingStates.entries()) {
+    if (now - timestamp > 4000) {
+      typingStates.delete(key); // Cleanup stale typing states
+    } else {
+      const [sender, receiver] = key.split(':');
+      if (receiver === user_email) {
+        typingUsers.push(sender);
+      }
+    }
+  }
+  
+  res.json({ typing: typingUsers });
+});
+
 // Messages Endpoints
 app.get("/api/messages", async (req, res) => {
   try {

@@ -50,26 +50,28 @@ export function ChatView({ preselectChat, preselectAdId }: ChatViewProps) {
 
   useEffect(() => {
     let interval: any;
-    let channel: any;
+    let typingInterval: any;
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user?.email) {
         setUserEmail(session.user.email);
         fetchMessages(session.user.email);
         
-        channel = supabase.channel('chat:typing', {
-          config: { broadcast: { ack: false } }
-        });
-
-        channel.on('broadcast', { event: 'typing' }, (payload: any) => {
-          if (payload.payload.receiver === session.user.email) {
-            setTypingUsers(prev => ({
-              ...prev,
-              [payload.payload.sender]: payload.payload.isTyping
-            }));
+        // Poll for typing status
+        typingInterval = setInterval(async () => {
+          try {
+            const res = await fetch(`/api/messages/typing?user_email=${encodeURIComponent(session.user.email!)}`);
+            const data = await res.json();
+            if (data.typing) {
+              const newTypingMap: Record<string, boolean> = {};
+              data.typing.forEach((email: string) => {
+                newTypingMap[email] = true;
+              });
+              setTypingUsers(newTypingMap);
+            }
+          } catch (e) {
+            console.error("Typing API error", e);
           }
-        }).subscribe();
-
-        channelRef.current = channel;
+        }, 1500);
 
         // Auto-refresh every 3 seconds
         interval = setInterval(() => {
@@ -82,7 +84,7 @@ export function ChatView({ preselectChat, preselectAdId }: ChatViewProps) {
 
     return () => {
       if (interval) clearInterval(interval);
-      if (channel) supabase.removeChannel(channel);
+      if (typingInterval) clearInterval(typingInterval);
     };
   }, []);
 
@@ -148,42 +150,43 @@ export function ChatView({ preselectChat, preselectAdId }: ChatViewProps) {
     (m.receiver_email === userEmail && m.sender_email === activeChat)
   );
 
+  const setTypingState = async (isTyping: boolean) => {
+    if (!activeChat || !userEmail) return;
+    try {
+      await fetch('/api/messages/typing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sender: userEmail, receiver: activeChat, isTyping })
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const handleTyping = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewMessage(e.target.value);
     
-    if (!channelRef.current || !activeChat || !userEmail) return;
+    if (!activeChat || !userEmail) return;
 
     if (e.target.value.trim().length > 0) {
       if (!isTypingLocalRef.current) {
         isTypingLocalRef.current = true;
-        channelRef.current.send({
-          type: 'broadcast',
-          event: 'typing',
-          payload: { sender: userEmail, receiver: activeChat, isTyping: true }
-        });
+        setTypingState(true);
       }
       
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       
       typingTimeoutRef.current = setTimeout(() => {
         isTypingLocalRef.current = false;
-        if (channelRef.current && activeChat && userEmail) {
-           channelRef.current.send({
-            type: 'broadcast',
-            event: 'typing',
-            payload: { sender: userEmail, receiver: activeChat, isTyping: false }
-          });
+        if (activeChat && userEmail) {
+           setTypingState(false);
         }
       }, 2000);
     } else {
        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
        if (isTypingLocalRef.current) {
          isTypingLocalRef.current = false;
-         channelRef.current.send({
-          type: 'broadcast',
-          event: 'typing',
-          payload: { sender: userEmail, receiver: activeChat, isTyping: false }
-         });
+         setTypingState(false);
        }
     }
   };
@@ -194,13 +197,9 @@ export function ChatView({ preselectChat, preselectAdId }: ChatViewProps) {
 
     try {
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-      if (isTypingLocalRef.current && channelRef.current) {
+      if (isTypingLocalRef.current) {
         isTypingLocalRef.current = false;
-        channelRef.current.send({
-          type: 'broadcast',
-          event: 'typing',
-          payload: { sender: userEmail, receiver: activeChat, isTyping: false }
-        });
+        setTypingState(false);
       }
       // Find the ad_id associated with this conversation, fallback to preselectAdId
       const activeConv = conversations.find(c => c.otherPerson === activeChat);
