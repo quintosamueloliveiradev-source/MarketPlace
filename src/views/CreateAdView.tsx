@@ -60,18 +60,26 @@ export function CreateAdView({ setView, editId, onClearEdit }: CreateAdViewProps
     e.preventDefault();
     setIsSubmitting(true);
     
+    // Extract form data synchronously before any await because e.currentTarget becomes null after await
+    const formData = new FormData(e.currentTarget);
+    const title = formData.get('title');
+    const category = formData.get('category');
+    const price = formData.get('price');
+    const description = formData.get('description');
+    const cep = formData.get('cep');
+    const cidade = formData.get('cidade');
+
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const user_email = session?.user?.email || null;
 
-      const formData = new FormData(e.currentTarget);
       const data = {
-        title: formData.get('title'),
-        category: formData.get('category'),
-        price: formData.get('price'),
-        description: formData.get('description'),
+        title,
+        category,
+        price,
+        description,
         images: selectedImages.length > 0 ? selectedImages : ["https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&auto=format&fit=crop&q=60"], // Fallback if no images
-        location: `${formData.get('cep') || ''} - ${formData.get('cidade') || ''}`.replace(/^- |-$/g, ''),
+        location: `${cep || ''} - ${cidade || ''}`.replace(/^- |-$/g, ''),
         user_email,
       };
 
