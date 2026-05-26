@@ -103,7 +103,7 @@ app.get("/api/migrate", async (req, res) => {
     await db.query(`
       CREATE TABLE IF NOT EXISTS messages (
         id SERIAL PRIMARY KEY,
-        ad_id INTEGER REFERENCES ads(id) ON DELETE CASCADE,
+        ad_id UUID REFERENCES ads(id) ON DELETE CASCADE,
         sender_email VARCHAR(255) NOT NULL,
         receiver_email VARCHAR(255) NOT NULL,
         content TEXT NOT NULL,

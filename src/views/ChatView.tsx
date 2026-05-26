@@ -95,7 +95,7 @@ export function ChatView({ preselectChat, preselectAdId }: ChatViewProps) {
       
       const sentMsg = await res.json();
       if (!sentMsg.error) {
-        setMessages([...messages, { ...sentMsg, ad_title: activeConv?.ad_title }]);
+        setMessages([...messages, { ...sentMsg, ad_title: activeConv?.ad_title || 'Anúncio' }]);
         setNewMessage('');
         
         // Update conversation summary
@@ -104,12 +104,24 @@ export function ChatView({ preselectChat, preselectAdId }: ChatViewProps) {
         if (convIndex >= 0) {
           updatedConvs[convIndex].lastMessage = sentMsg.content;
           updatedConvs[convIndex].timestamp = sentMsg.created_at;
-          updatedConvs.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-          setConversations(updatedConvs);
+        } else {
+          updatedConvs.push({
+            otherPerson: activeChat,
+            ad_title: 'Anúncio (Novo)',
+            lastMessage: sentMsg.content,
+            timestamp: sentMsg.created_at,
+            ad_id: ad_id
+          });
         }
+        updatedConvs.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        setConversations(updatedConvs);
+      } else {
+        console.error("Message send error:", sentMsg.error);
+        alert("Erro ao enviar mensagem: " + sentMsg.error);
       }
     } catch (e) {
       console.error(e);
+      alert("Erro de conexão ao enviar mensagem");
     }
   };
 
