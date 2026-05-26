@@ -71,7 +71,7 @@ export function ChatView({ preselectChat, preselectAdId }: ChatViewProps) {
           } catch (e) {
             console.error("Typing API error", e);
           }
-        }, 1500);
+        }, 500);
 
         // Auto-refresh every 3 seconds
         interval = setInterval(() => {
@@ -169,15 +169,17 @@ export function ChatView({ preselectChat, preselectAdId }: ChatViewProps) {
     if (!activeChat || !userEmail) return;
 
     if (e.target.value.trim().length > 0) {
-      if (!isTypingLocalRef.current) {
-        isTypingLocalRef.current = true;
-        setTypingState(true);
+      const now = Date.now();
+      if (!isTypingLocalRef.current || now - (isTypingLocalRef.current as any) > 1500) {
+        if (!isTypingLocalRef.current) setTypingState(true);
+        else setTypingState(true);
+        isTypingLocalRef.current = now as any;
       }
       
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       
       typingTimeoutRef.current = setTimeout(() => {
-        isTypingLocalRef.current = false;
+        isTypingLocalRef.current = false as any;
         if (activeChat && userEmail) {
            setTypingState(false);
         }
@@ -327,13 +329,13 @@ export function ChatView({ preselectChat, preselectAdId }: ChatViewProps) {
             </div>
           </div>
           
-          <div className="flex-1 overflow-y-auto p-4 md:p-6 flex flex-col gap-4 bg-surface-container-lowest w-full">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 flex flex-col gap-4 bg-surface-container-lowest w-full">
             {currentChatMessages.map((msg, idx) => {
               const isMe = msg.sender_email === userEmail;
               return (
                 <div key={idx} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-2 ${isMe ? 'bg-primary text-white rounded-br-sm' : 'bg-surface-container-high text-on-surface rounded-bl-sm'}`}>
-                    <p className={`text-body-md ${isMe ? 'text-white' : 'text-on-surface'}`}>{msg.content}</p>
+                  <div className={`max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-2 ${isMe ? 'bg-primary text-white rounded-br-sm' : 'bg-surface-container-high text-on-surface rounded-bl-sm'} overflow-hidden`}>
+                    <p className={`text-body-md break-all whitespace-pre-wrap ${isMe ? 'text-white' : 'text-on-surface'}`}>{msg.content}</p>
                     <span className={`text-[10px] block mt-1 text-right ${isMe ? 'text-primary-container/80' : 'text-on-surface-variant'}`}>
                       {new Date(msg.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}
                     </span>
