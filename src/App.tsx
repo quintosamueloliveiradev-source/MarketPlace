@@ -17,6 +17,7 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [intendedView, setIntendedView] = useState<ViewType>('explore');
+  const [editingAdId, setEditingAdId] = useState<string | null>(null);
 
   useEffect(() => {
     localStorage.setItem('currentView', view);
@@ -64,9 +65,10 @@ export default function App() {
       <main className="flex-grow flex flex-col w-full">
         {view === 'explore' && <ExploreView setView={setView} />}
         {view === 'product' && <ProductView setView={setView} />}
-        {view === 'dashboard' && <DashboardView setView={setView} />}
+        {view === 'dashboard' && <DashboardView setView={setView} onEditAd={(id) => { setEditingAdId(id); setView('edit'); }} />}
         {view === 'chat' && <ChatView />}
-        {view === 'create' && <CreateAdView setView={setView} />}
+        {view === 'create' && <CreateAdView setView={setView} onClearEdit={() => setEditingAdId(null)} />}
+        {view === 'edit' && <CreateAdView setView={setView} editId={editingAdId!} onClearEdit={() => setEditingAdId(null)} />}
         {view === 'login' && <LoginView setView={setView} onLoginSuccess={handleLoginSuccess} />}
       </main>
 

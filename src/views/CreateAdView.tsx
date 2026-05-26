@@ -4,11 +4,39 @@ import React, { useState } from 'react';
 
 interface CreateAdViewProps {
   setView: (view: ViewType) => void;
+  editId?: string;
+  onClearEdit?: () => void;
 }
 
-export function CreateAdView({ setView }: CreateAdViewProps) {
+export function CreateAdView({ setView, editId, onClearEdit }: CreateAdViewProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingAd, setIsLoadingAd] = useState(!!editId);
+  const [initialData, setInitialData] = useState<any>(null);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
+
+  React.useEffect(() => {
+    if (editId) {
+      setIsLoadingAd(true);
+      fetch(`/api/ads/${editId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (!data.error) {
+            setInitialData(data);
+            let imgs = [];
+            try {
+              imgs = typeof data.images === 'string' ? JSON.parse(data.images) : data.images;
+              if (!Array.isArray(imgs)) imgs = [];
+            } catch(e) {}
+            setSelectedImages(imgs);
+          }
+        })
+        .finally(() => setIsLoadingAd(false));
+    } else {
+      setIsLoadingAd(false);
+      setInitialData(null);
+      setSelectedImages([]);
+    }
+  }, [editId]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -38,11 +66,14 @@ export function CreateAdView({ setView }: CreateAdViewProps) {
         price: formData.get('price'),
         description: formData.get('description'),
         images: selectedImages.length > 0 ? selectedImages : ["https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&auto=format&fit=crop&q=60"], // Fallback if no images
-        location: `${formData.get('cep')} - ${formData.get('cidade')}`,
+        location: `${formData.get('cep') || ''} - ${formData.get('cidade') || ''}`.replace(/^- |-$/g, ''),
       };
 
-      const resp = await fetch('/api/ads', {
-        method: 'POST',
+      const endpoint = editId ? `/api/ads/${editId}` : '/api/ads';
+      const method = editId ? 'PUT' : 'POST';
+
+      const resp = await fetch(endpoint, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       });
@@ -55,7 +86,8 @@ export function CreateAdView({ setView }: CreateAdViewProps) {
       }
 
       if (resp.ok && !result.error) {
-        console.log('Anúncio publicado com sucesso no banco!');
+        console.log('Anúncio salvo com sucesso no banco!');
+        onClearEdit?.();
         setView('dashboard');
       } else {
         console.error('Erro ao publicar anúncio: ', result.error || result.message);
@@ -69,12 +101,28 @@ export function CreateAdView({ setView }: CreateAdViewProps) {
     }
   };
 
+  if (isLoadingAd) {
+    return (
+      <div className="flex h-screen items-center justify-center -mt-20">
+        <div className="flex flex-col items-center gap-4">
+          <svg className="animate-spin h-8 w-8 text-primary" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span className="text-on-surface-variant font-label-lg">Carregando dados...</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-12 min-h-screen w-full">
       <div className="max-w-4xl mx-auto w-full">
         <header className="mb-10 text-center">
-          <h1 className="font-display-lg text-[32px] md:text-display-lg mb-2">Criar Novo Anúncio</h1>
-          <p className="text-on-surface-variant font-body-lg text-body-lg">Preencha os detalhes abaixo para começar a vender hoje mesmo.</p>
+          <h1 className="font-display-lg text-[32px] md:text-display-lg mb-2">{editId ? 'Editar Anúncio' : 'Criar Novo Anúncio'}</h1>
+          <p className="text-on-surface-variant font-body-lg text-body-lg">
+            {editId ? 'Atualize as informações do seu produto abaixo.' : 'Preencha os detalhes abaixo para começar a vender hoje mesmo.'}
+          </p>
         </header>
 
         {/* Multi-step Progress Bar */}
@@ -99,12 +147,12 @@ export function CreateAdView({ setView }: CreateAdViewProps) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
                 <div className="col-span-1 md:col-span-2 space-y-2">
                   <label className="font-title-lg text-[18px] md:text-title-lg block text-on-surface">Título do Anúncio</label>
-                  <input name="title" type="text" className="w-full px-4 py-3 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-surface" placeholder="Ex: iPhone 14 Pro Max 256GB - Azul" required />
+                  <input name="title" type="text" defaultValue={initialData?.title} className="w-full px-4 py-3 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-surface" placeholder="Ex: iPhone 14 Pro Max 256GB - Azul" required />
                 </div>
                 
                 <div className="space-y-2">
                   <label className="font-title-lg text-[18px] md:text-title-lg block text-on-surface">Categoria</label>
-                  <select name="category" className="w-full px-4 py-3 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-surface" required>
+                  <select name="category" defaultValue={initialData?.category || ''} className="w-full px-4 py-3 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-surface" required>
                     <option value="">Selecione uma categoria</option>
                     <option value="eletronicos">Eletrônicos</option>
                     <option value="veiculos">Veículos</option>
@@ -115,12 +163,12 @@ export function CreateAdView({ setView }: CreateAdViewProps) {
                 
                 <div className="space-y-2">
                   <label className="font-title-lg text-[18px] md:text-title-lg block text-on-surface">Preço (R$)</label>
-                  <input name="price" type="number" className="w-full px-4 py-3 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-surface" placeholder="0,00" required />
+                  <input name="price" type="number" defaultValue={initialData?.price} className="w-full px-4 py-3 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-surface" placeholder="0,00" required />
                 </div>
 
                 <div className="col-span-1 md:col-span-2 space-y-2">
                   <label className="font-title-lg text-[18px] md:text-title-lg block text-on-surface">Descrição Detalhada</label>
-                  <textarea name="description" rows={5} className="w-full px-4 py-3 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-surface" placeholder="Descreva as condições do produto, tempo de uso e diferenciais..." required></textarea>
+                  <textarea name="description" rows={5} defaultValue={initialData?.description} className="w-full px-4 py-3 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-surface" placeholder="Descreva as condições do produto, tempo de uso e diferenciais..." required></textarea>
                 </div>
 
                 {/* Upload Zone */}
@@ -162,7 +210,7 @@ export function CreateAdView({ setView }: CreateAdViewProps) {
                     </div>
                     <div className="space-y-2">
                       <label className="font-label-md text-label-md block text-on-surface-variant">Cidade / Bairro</label>
-                      <input name="cidade" type="text" className="w-full px-4 py-3 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-surface" placeholder="Ex: São Paulo, SP" />
+                      <input name="cidade" type="text" defaultValue={initialData?.location} className="w-full px-4 py-3 rounded-lg border border-outline-variant focus:ring-2 focus:ring-primary focus:border-primary transition-all bg-surface" placeholder="Ex: São Paulo, SP" />
                     </div>
                   </div>
                 </div>
@@ -253,7 +301,10 @@ export function CreateAdView({ setView }: CreateAdViewProps) {
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-10 border-t border-outline-variant/30 mt-12 w-full">
               <button 
                 type="button" 
-                onClick={() => setView('dashboard')}
+                onClick={() => {
+                  onClearEdit?.();
+                  setView('dashboard');
+                }}
                 className="order-2 sm:order-1 text-primary font-bold hover:underline transition-all py-3 px-4 w-full sm:w-auto"
               >
                 Cancelar
@@ -269,9 +320,9 @@ export function CreateAdView({ setView }: CreateAdViewProps) {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Publicando...
+                    Salvando...
                   </>
-                ) : 'Publicar Anúncio'}
+                ) : (editId ? 'Salvar Alterações' : 'Publicar Anúncio')}
               </button>
             </div>
           </form>

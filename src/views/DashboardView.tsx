@@ -8,9 +8,10 @@ import { supabase } from '../lib/supabase';
 
 interface DashboardViewProps {
   setView: (view: ViewType) => void;
+  onEditAd?: (id: string) => void;
 }
 
-export function DashboardView({ setView }: DashboardViewProps) {
+export function DashboardView({ setView, onEditAd }: DashboardViewProps) {
   const [myAds, setMyAds] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -71,9 +72,6 @@ export function DashboardView({ setView }: DashboardViewProps) {
     }
   };
 
-  const handleEdit = () => {
-    console.log('Funcionalidade de edição em desenvolvimento.');
-  };
 
   return (
     <div className="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-8 flex flex-col md:flex-row gap-gutter w-full">
@@ -236,7 +234,7 @@ export function DashboardView({ setView }: DashboardViewProps) {
                           </button>
                         )}
                         {ad.status !== 'Vendido' && (
-                          <button onClick={handleEdit} className="p-2 text-on-surface-variant hover:text-primary transition-colors">
+                          <button onClick={() => onEditAd?.(ad.id)} className="p-2 text-on-surface-variant hover:text-primary transition-colors">
                             <Edit size={20} />
                           </button>
                         )}

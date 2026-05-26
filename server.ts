@@ -112,6 +112,46 @@ app.post("/api/ads", async (req, res) => {
   }
 });
 
+// Update an ad
+app.put("/api/ads/:id", async (req, res) => {
+  try {
+    if (!process.env.DATABASE_URL) {
+      return res.status(500).json({ error: "No Database Configured", message: "Database URL is not configured." });
+    }
+    const { title, category, price, description, images, location } = req.body;
+    const db = getPool();
+    const result = await db.query(
+      "UPDATE ads SET title = $1, category = $2, price = $3, description = $4, images = $5, location = $6 WHERE id = $7 RETURNING *",
+      [title, category, price, description, JSON.stringify(images), location, req.params.id]
+    );
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Anúncio não encontrado" });
+    }
+    res.json(result.rows[0]);
+  } catch (error: any) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get single ad
+app.get("/api/ads/:id", async (req, res) => {
+  try {
+    if (!process.env.DATABASE_URL) {
+      return res.status(500).json({ error: "No Database Configured" });
+    }
+    const db = getPool();
+    const result = await db.query("SELECT * FROM ads WHERE id = $1", [req.params.id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Anúncio não encontrado" });
+    }
+    res.json(result.rows[0]);
+  } catch (error: any) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.delete("/api/ads/:id", async (req, res) => {
   try {
     if (!process.env.DATABASE_URL) {
