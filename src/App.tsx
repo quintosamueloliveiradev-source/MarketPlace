@@ -19,6 +19,7 @@ export default function App() {
   const [intendedView, setIntendedView] = useState<ViewType>('explore');
   const [editingAdId, setEditingAdId] = useState<string | null>(null);
   const [viewingAdId, setViewingAdId] = useState<string | null>(null);
+  const [chattingWithEmail, setChattingWithEmail] = useState<string | null>(null);
 
   useEffect(() => {
     localStorage.setItem('currentView', view);
@@ -46,31 +47,38 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  const handleSetViewWrapper = (targetView: ViewType) => {
+    if (targetView !== 'chat' && targetView !== 'product' && targetView !== 'login') {
+      setChattingWithEmail(null);
+    }
+    setView(targetView);
+  };
+
   const handleProtectedAction = (targetView: ViewType) => {
     if (!isLoggedIn) {
       setIntendedView(targetView);
       setView('login');
     } else {
-      setView(targetView);
+      handleSetViewWrapper(targetView);
     }
   };
 
   const handleLoginSuccess = () => {
-    setView(intendedView === 'login' ? 'explore' : intendedView);
+    handleSetViewWrapper(intendedView === 'login' ? 'explore' : intendedView);
   };
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-on-surface font-sans selection:bg-primary-fixed selection:text-on-primary-fixed">
-      {view !== 'login' && <Header currentView={view} setView={setView} isLoggedIn={isLoggedIn} onProtectedAction={handleProtectedAction} />}
+      {view !== 'login' && <Header currentView={view} setView={handleSetViewWrapper} isLoggedIn={isLoggedIn} onProtectedAction={handleProtectedAction} />}
       
       <main className="flex-grow flex flex-col w-full">
-        {view === 'explore' && <ExploreView setView={setView} onViewAd={(id) => { setViewingAdId(id); setView('product'); }} />}
-        {view === 'product' && <ProductView setView={setView} adId={viewingAdId} />}
-        {view === 'dashboard' && <DashboardView setView={setView} onEditAd={(id) => { setEditingAdId(id); setView('edit'); }} />}
-        {view === 'chat' && <ChatView />}
-        {view === 'create' && <CreateAdView setView={setView} onClearEdit={() => setEditingAdId(null)} />}
-        {view === 'edit' && <CreateAdView setView={setView} editId={editingAdId!} onClearEdit={() => setEditingAdId(null)} />}
-        {view === 'login' && <LoginView setView={setView} onLoginSuccess={handleLoginSuccess} />}
+        {view === 'explore' && <ExploreView setView={handleSetViewWrapper} onViewAd={(id) => { setViewingAdId(id); handleSetViewWrapper('product'); }} />}
+        {view === 'product' && <ProductView setView={handleSetViewWrapper} adId={viewingAdId} onStartChat={(email) => { setChattingWithEmail(email); handleProtectedAction('chat'); }} />}
+        {view === 'dashboard' && <DashboardView setView={handleSetViewWrapper} onEditAd={(id) => { setEditingAdId(id); handleSetViewWrapper('edit'); }} />}
+        {view === 'chat' && <ChatView preselectChat={chattingWithEmail} preselectAdId={viewingAdId} />}
+        {view === 'create' && <CreateAdView setView={handleSetViewWrapper} onClearEdit={() => setEditingAdId(null)} />}
+        {view === 'edit' && <CreateAdView setView={handleSetViewWrapper} editId={editingAdId!} onClearEdit={() => setEditingAdId(null)} />}
+        {view === 'login' && <LoginView setView={handleSetViewWrapper} onLoginSuccess={handleLoginSuccess} />}
       </main>
 
       {/* Do not show the standard footer on the chat view or login view to maximize screen space */}

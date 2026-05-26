@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import { ViewType } from '../types';
 import { ChevronRight, Heart, Star, ShieldCheck, Truck, MessageCircle } from 'lucide-react';
 
-interface ProductViewProps {
+export interface ProductViewProps {
   setView: (view: ViewType) => void;
   adId?: string | null;
+  onStartChat?: (email: string) => void;
 }
 
-export function ProductView({ setView, adId }: ProductViewProps) {
+export function ProductView({ setView, adId, onStartChat }: ProductViewProps) {
   const [productData, setProductData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState<string>('');
@@ -149,7 +150,13 @@ export function ProductView({ setView, adId }: ProductViewProps) {
 
             </button>
             <button 
-              onClick={() => setView('chat')}
+              onClick={() => {
+                if (onStartChat && productData?.user_email) {
+                  onStartChat(productData.user_email);
+                } else {
+                  setView('chat');
+                }
+              }}
               className="w-full py-4 bg-surface text-primary border-2 border-primary rounded-xl font-bold text-title-lg hover:bg-primary-fixed transition-all active:scale-95 flex items-center justify-center gap-2"
             >
               <MessageCircle />

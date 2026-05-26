@@ -58,6 +58,64 @@ app.get("/api/health", (req, res) => {
 });
 
 // Get all ads
+// Messages Endpoints
+app.get("/api/messages", async (req, res) => {
+  try {
+    const db = getPool();
+    const { user_email } = req.query;
+    if (!user_email) {
+      return res.status(400).json({ error: "user_email is required" });
+    }
+    const result = await db.query(
+      `SELECT m.*, a.title as ad_title 
+       FROM messages m 
+       LEFT JOIN ads a ON m.ad_id = a.id 
+       WHERE m.sender_email = $1 OR m.receiver_email = $1 
+       ORDER BY m.created_at ASC`,
+      [user_email]
+    );
+    res.json(result.rows);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/messages", async (req, res) => {
+  try {
+    const db = getPool();
+    const { ad_id, sender_email, receiver_email, content } = req.body;
+    if (!sender_email || !receiver_email || !content) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+    const result = await db.query(
+      "INSERT INTO messages (ad_id, sender_email, receiver_email, content) VALUES ($1, $2, $3, $4) RETURNING *",
+      [ad_id, sender_email, receiver_email, content]
+    );
+    res.json(result.rows[0]);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get("/api/migrate", async (req, res) => {
+  try {
+    const db = getPool();
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS messages (
+        id SERIAL PRIMARY KEY,
+        ad_id INTEGER REFERENCES ads(id) ON DELETE CASCADE,
+        sender_email VARCHAR(255) NOT NULL,
+        receiver_email VARCHAR(255) NOT NULL,
+        content TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    res.json({ status: "ok" });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get("/api/ads", async (req, res) => {
   try {
     if (!process.env.DATABASE_URL) {
